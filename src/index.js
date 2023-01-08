@@ -11,9 +11,9 @@ function getWeather(city) {
     request.addEventListener('loaded', function() {
       const response = JSON.parse(this.responseText);
       if (this.status === 200) {
-        printElements(response, city);
+        resolve([response, city]);
       } else {
-        printError(this, response, city);
+        reject([this, response, city]);
       }
     });
     request.open("GET", url, true);
