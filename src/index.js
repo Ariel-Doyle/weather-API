@@ -2,35 +2,66 @@ import 'bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './css/styles.css';
 import WeatherService from './weather-service.js';
+import GiphyService from './giphy-service.js';
 
-//Business
-async function getWeather(city) {
-  const response = await WeatherService.getWeather(city);
-  if (response.main) {
-    printElements(response, city);
-  } else {
-    printError(response, city);
-  }
+// Business Logic
+
+function getAPIData(city) {
+  WeatherService.getWeather(city)
+    .then(function(weatherResponse) {
+      if (weatherResponse instanceof Error) {
+        const errorMessage = `there was a problem accessing the weather data from OpenWeather API for ${city}: 
+        ${weatherResponse.message}`;
+        throw new Error(errorMessage);
+      } 
+      const description = weatherResponse.weather[0].description;
+      printWeather(description, city);
+      return GiphyService.getGif(description);
+    })
+    .then(function(giphyResponse) {
+      if (giphyResponse instanceof Error) {
+        const errorMessage = `there was a problem accessing the gif data from Giphy API: 
+        ${giphyResponse.message}.`;
+        throw new Error(errorMessage);
+      } 
+      displayGif(giphyResponse, city);
+    })
+    .catch(function(error) {
+      printError(error);
+    });
 }
 
 // UI Logic
-function printElements(response, city) {
-  document.querySelector('#showResponse').innerText = `The humidity in ${city} is ${response.main.humidity}%.
-  The temperature in Kelvins is ${response.main.temp} degrees or ${((1.8*(response.main.temp - 273)) + 32).toFixed(2)} degrees Fahrenheit.
-  The weather is ${response.weather[0].main}.`;
+
+function printWeather(description, city) {
+  document.querySelector('#weather-description').innerText = `The weather in ${city} is ${description}.`;
 }
 
-function printError(error, city) {
-  document.querySelector('#showResponse').innerText = `There was an error accessing the weather data for ${city}:  
-    ${error}.`;
-}   
+function printError(error) {
+  document.querySelector('#error').innerText = error;
+}
 
-function handleFormSubmission(e) {
-  e.preventDefault();
+function displayGif(response, city) {
+  const url = response.data[0].images.downsized.url;
+  const img = document.createElement("img");
+  img.src = url;
+  img.alt = `${city} weather`;
+  document.querySelector("#gif").append(img);
+}
+
+function clearResults() {
+  document.querySelector("#gif").innerText = null;
+  document.querySelector('#error').innerText = null;
+  document.querySelector('#weather-description').innerText = null;
+}
+
+function handleFormSubmission(event) {
+  event.preventDefault();
+  clearResults();
   const city = document.querySelector('#location').value;
   document.querySelector('#location').value = null;
-  getWeather(city);
-} 
+  getAPIData(city);
+}
 
 window.addEventListener("load", function() {
   document.querySelector('form').addEventListener("submit", handleFormSubmission);
